@@ -116,7 +116,7 @@
         const largeGroundMat = new BABYLON.StandardMaterial("largeGroundMat");
         largeGroundMat.diffuseTexture = new BABYLON.Texture("/assets/textures/skybox4_ny.jpg");
         
-        const largeGround = BABYLON.MeshBuilder.CreateGroundFromHeightMap("largeGround", "/assets/textures/groundHeight.png", {width:100, height:100, subdivisions: 40, minHeight:0, maxHeight: 3});
+        const largeGround = BABYLON.MeshBuilder.CreateGroundFromHeightMap("largeGround", "/assets/textures/groundHeight.png", {width:100, height:100, subdivisions: 80, minHeight:0, maxHeight: 3});
         largeGround.material = largeGroundMat;
         largeGround.position.y-=10;
         // largeGround.physicsImpostor = new BABYLON.PhysicsImpostor(largeGround, BABYLON.PhysicsImpostor.BoxImpostor, 
@@ -135,6 +135,17 @@
         skyboxMaterial.reflectionTexture.coordinatesMode = BABYLON.Texture.SKYBOX_MODE;
         skyboxMaterial.disableLighting = true;
 	    skybox.material = skyboxMaterial;
+    }
+    const isValidPosition = (hero,heroSpeed) => {
+        const looking = hero.forward.scaleInPlace(heroSpeed);
+        const zNegative = looking.z < 0 ? -1 : 1;
+        const xNegative = looking.x < 0 ? -1 : 1;
+    
+        const nextHeroPositionZ = hero.position.z + heroSpeed * zNegative;
+        const nextHeroPositionX = hero.position.x + heroSpeed * xNegative;
+    
+        const heroRadius = Math.sqrt(Math.pow(nextHeroPositionX,2) + Math.pow(nextHeroPositionZ,2));
+        return heroRadius >= 36.2;
     }
 
     var createCharacter = function(defaultCamera, scene, ground){
@@ -168,9 +179,9 @@
             defaultCamera.target = hero;
 
             //var heroSpeed = 0.03;
-            var heroSpeed = 0.5;
+            var heroSpeed = 0.2;
             var heroSpeedBackwards = 0.01;
-            var heroRotationSpeed = 0.1;
+            var heroRotationSpeed = 0.05;
 
             var animating = true;
 
@@ -181,12 +192,17 @@
 
             scene.onBeforeRenderObservable.add(() => {
                 var keydown = false;
-
                 if (inputMap["w"]) {
+                    if(isValidPosition(hero,heroSpeed)) {
+                        return;
+                    } 
                     hero.moveWithCollisions(hero.forward.scaleInPlace(heroSpeed));
                     keydown = true;
                 }
                 if (inputMap["s"]) {
+                    if(isValidPosition(hero,-heroSpeedBackwards)) {
+                        return;
+                    }
                     hero.moveWithCollisions(hero.forward.scaleInPlace(-heroSpeedBackwards));
                     keydown = true;
                 }
