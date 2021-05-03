@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+
+    <title>Babylon.js sample code</title>
+
+    <!-- Babylon.js -->
+    <script src="https://code.jquery.com/pep/0.4.2/pep.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.6.2/dat.gui.min.js"></script>
+    <script src="https://preview.babylonjs.com/ammo.js"></script>
+    <script src="https://preview.babylonjs.com/cannon.js"></script>
+    <script src="https://preview.babylonjs.com/Oimo.js"></script>
+    <script src="https://preview.babylonjs.com/libktx.js"></script>
+    <script src="https://preview.babylonjs.com/earcut.min.js"></script>
+    <script src="https://preview.babylonjs.com/babylon.js"></script>
+    <script src="https://preview.babylonjs.com/inspector/babylon.inspector.bundle.js"></script>
+    <script src="https://preview.babylonjs.com/materialsLibrary/babylonjs.materials.min.js"></script>
+    <script src="https://preview.babylonjs.com/proceduralTexturesLibrary/babylonjs.proceduralTextures.min.js"></script>
+    <script src="https://preview.babylonjs.com/postProcessesLibrary/babylonjs.postProcess.min.js"></script>
+    <script src="https://preview.babylonjs.com/loaders/babylonjs.loaders.js"></script>
+    <script src="https://preview.babylonjs.com/serializers/babylonjs.serializers.min.js"></script>
+    <script src="https://preview.babylonjs.com/gui/babylon.gui.min.js"></script>
+
+    <style>
+        html,
+        body {
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        #renderCanvas {
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="renderCanvas"></canvas>
+    <script>
+
+    var canvas = document.getElementById("renderCanvas");
+
+    var engine = null;
+    var scene = null;
+    var sceneToRender = null;
+
+    var createDefaultEngine = function() { return new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true,  disableWebGL2Support: false}); };
+
+    var createScene = function() {
+        var scene = new BABYLON.Scene(engine);
+
+        //scene.collisionsEnabled = true;
+        //scene.gravity = new BABYLON.Vector3(0, -4, 0);
+        //scene.enablePhysics();
+
+        var camera = new BABYLON.ArcRotateCamera("Camera", - Math.PI / 2, Math.PI / 4, -1, new BABYLON.Vector3(0,0,0), scene);
+        camera.setPosition(new BABYLON.Vector3(0, 0, -10));
+        camera.lowerRadiusLimit = 10;
+        camera.upperRadiusLimit = 14;
+        camera.attachControl(canvas, true);
+
+        
+
+        var light1 = new BABYLON.DirectionalLight("DirectionalLight", new BABYLON.Vector3(0, -1, 1), scene);
+        var light2 = new BABYLON.HemisphericLight("HemiLight", new BABYLON.Vector3(0, 1, 0), scene);   
+        light1.intensity =0.75;
+        light2.intensity =0.5;
+
+        createHUD(scene);
+        var ground = createGround(scene);
+        createSkyBox();
+        createCharacter(camera, scene, ground);
+        createBarrel("1", scene);
+        //scene.debugLayer.show();
+
+        //balloon 3 intersection on single point
+        scene.registerBeforeRender(function () {
+            var hero = scene.getMeshByID("hero");
+            //var barrel = scene.getMeshByID("Barrel_low");
+            var barrel = scene.getMeshByID("barrel1");
+            
+
+            if(hero && barrel){
+                var barrelChildren = barrel.getChildren();
+                var barrelBody = barrelChildren[2];
+
+                if(hero.intersectsMesh(barrelBody, true)) {
+                    console.log("ENTROU");
+                    // var newExplosion = new BABYLON.MeshExploder(barrelChildren, barrelBody);
+                    // newExplosion.explode(2);
+                    
+                    barrel.dispose(false, true);
+                }
+            }
+            
+            if(camera.beta <= 0.1){
+                camera.beta = 0.1;
+            }else if(camera.beta > (Math.PI/2)*0.75){
+                camera.beta = (Math.PI/2)*0.75;
+            }
+
+        })
+        return scene;
+    };
+
+
+
+    var createGround = function(scene){
+        const largeGroundMat = new BABYLON.StandardMaterial("largeGroundMat");
+        largeGroundMat.diffuseTexture = new BABYLON.Texture("/assets/textures/skybox4_ny.jpg");
+        
+        const largeGround = BABYLON.MeshBuilder.CreateGroundFromHeightMap("largeGround", "/assets/textures/groundHeight.png", {width:100, height:100, subdivisions: 40, minHeight:0, maxHeight: 3});
+        largeGround.material = largeGroundMat;
+        largeGround.position.y-=10;
+        // largeGround.physicsImpostor = new BABYLON.PhysicsImpostor(largeGround, BABYLON.PhysicsImpostor.BoxImpostor, 
+        // { 
+        //     mass: 0, restitution: 0.3 
+        // }, scene);
+        
+        return largeGround;
+    }
+   
+    var createSkyBox = function(){
+        var skybox = BABYLON.MeshBuilder.CreateBox("skyBox", {size:100.0}, scene);
+        var skyboxMaterial = new BABYLON.StandardMaterial("skyBox", scene);
+        skyboxMaterial.backFaceCulling = false;
+        skyboxMaterial.reflectionTexture = new BABYLON.CubeTexture("/assets/textures/skybox4", scene);
+        skyboxMaterial.reflectionTexture.coordinatesMode = BABYLON.Texture.SKYBOX_MODE;
+        skyboxMaterial.disableLighting = true;
+	    skybox.material = skyboxMaterial;
+    }
+
+    var createCharacter = function(defaultCamera, scene, ground){
+        // Keyboard events
+        var inputMap = {};
+        scene.actionManager = new BABYLON.ActionManager(scene);
+        scene.actionManager.registerAction(new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnKeyDownTrigger, function (evt) {
+            inputMap[evt.sourceEvent.key] = evt.sourceEvent.type == "keydown";
+        }));
+        scene.actionManager.registerAction(new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnKeyUpTrigger, function (evt) {
+            inputMap[evt.sourceEvent.key] = evt.sourceEvent.type == "keydown";
+        }));
+
+        BABYLON.SceneLoader.ImportMesh("", "https://assets.babylonjs.com/meshes/", "HVGirl.glb", scene, function (newMeshes, particleSystems, skeletons, animationGroups) {
+            var hero = newMeshes[0];
+            hero.id = "hero";
+            hero.scaling.scaleInPlace(0.1);
+            hero.position.y-=10;
+            //hero.checkCollisions = true;
+            // hero.physicsImpostor = new BABYLON.PhysicsImpostor(hero, BABYLON.PhysicsImpostor.SphereImpostor,
+            // {
+            //     mass: 1.0, restitution: 1.0
+            // }, scene);
+
+            // var myCollide = function () {
+            //     console.log("bounce!");
+            // }
+        
+            // hero.physicsImpostor.registerOnPhysicsCollide(ground.physicsImpostor, myCollide);
+
+            defaultCamera.target = hero;
+
+            //var heroSpeed = 0.03;
+            var heroSpeed = 0.5;
+            var heroSpeedBackwards = 0.01;
+            var heroRotationSpeed = 0.1;
+
+            var animating = true;
+
+            const walkAnim = scene.getAnimationGroupByName("Walking");
+            const walkBackAnim = scene.getAnimationGroupByName("WalkingBack");
+            const idleAnim = scene.getAnimationGroupByName("Idle");
+            const sambaAnim = scene.getAnimationGroupByName("Samba");
+
+            scene.onBeforeRenderObservable.add(() => {
+                var keydown = false;
+
+                if (inputMap["w"]) {
+                    hero.moveWithCollisions(hero.forward.scaleInPlace(heroSpeed));
+                    keydown = true;
+                }
+                if (inputMap["s"]) {
+                    hero.moveWithCollisions(hero.forward.scaleInPlace(-heroSpeedBackwards));
+                    keydown = true;
+                }
+                if (inputMap["a"]) {
+                    hero.rotate(BABYLON.Vector3.Up(), -heroRotationSpeed);
+                    keydown = true;
+                }
+                if (inputMap["d"]) {
+                    hero.rotate(BABYLON.Vector3.Up(), heroRotationSpeed);
+                    keydown = true;
+                }
+                if (inputMap["b"]) {
+                    keydown = true;
+                }
+
+                if (keydown) {
+                    if (!animating) {
+                        animating = true;
+                        if (inputMap["s"]) {
+                            walkBackAnim.start(true, 1.0, walkBackAnim.from, walkBackAnim.to, false);
+                        }
+                        else if
+                            (inputMap["b"]) {
+                            sambaAnim.start(true, 1.0, sambaAnim.from, sambaAnim.to, false);
+                        }
+                        else {
+                            walkAnim.start(true, 1.0, walkAnim.from, walkAnim.to, false);
+                        }
+                    }
+                }
+                else {
+
+                    if (animating) {  
+                        idleAnim.start(true, 1.0, idleAnim.from, idleAnim.to, false);
+
+                        sambaAnim.stop();
+                        walkAnim.stop();
+                        walkBackAnim.stop();
+
+                        animating = false;
+                    }
+                }
+
+            });
+        });
+    
+    }
+    
+    var createBarrel = function(idBarrel, scene){
+        BABYLON.SceneLoader.ImportMesh(
+        "",
+        "https://models.babylonjs.com/",
+        "ExplodingBarrel.glb",
+        scene,
+        function (meshes) {          
+            const barrel = new BABYLON.Mesh(`barrel${idBarrel}`, scene);
+            meshes.forEach(mesh => {
+                mesh.setParent(barrel);
+                barrel.addChild(mesh);
+            });
+            barrel.scaling.x = 0.02;
+            barrel.scaling.y = 0.02;
+            barrel.scaling.z = 0.02;
+            barrel.position.x = 20
+            barrel.position.y= -10;
+        });
+    }
+
+    var createHUD = function(scene){
+        
+        let advancedTexture;
+
+        var buildUI = function () {
+            if (advancedTexture) {
+                advancedTexture.dispose();
+            }
+            advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
+
+            var topPanel = new BABYLON.GUI.StackPanel();
+            topPanel.height = "650px";
+            topPanel.paddingBottom = "5px";
+            topPanel.isVertical = true;
+            topPanel.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_STRETCH;
+            topPanel.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_BOTTOM;
+            topPanel.fontSize = 26;
+            advancedTexture.addControl(topPanel);
+
+            var addHeader = function (text, panel, alinhamento) {
+                var header = new BABYLON.GUI.TextBlock();
+                header.text = text;
+                header.height = "30px";
+                header.color = "white";
+                header.outlineWidth = "4px";
+                header.outlineColor = "black";
+                header.textHorizontalAlignment = alinhamento;
+
+                panel.addControl(header);
+            }
+
+            var alinhamentoCentro = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_CENTER;
+
+            addHeader("AVALIAÇÃO - AC2", topPanel, alinhamentoCentro);
+            addHeader("Gabriel Antonio Noel - 180274", topPanel, alinhamentoCentro);
+            addHeader("Gustavo dos Santos Nogueira - 181010", topPanel, alinhamentoCentro);
+        }
+
+        buildUI();
+        return advancedTexture;
+    }
+
+    var engine;
+    var scene;
+    initFunction = async function() {               
+        var asyncEngineCreation = async function() {
+            try {
+            return createDefaultEngine();
+            } catch(e) {
+            console.log("the available createEngine function failed. Creating the default engine instead");
+            return createDefaultEngine();
+            }
+        }
+
+    engine = await asyncEngineCreation();
+    if (!engine) throw 'engine should not be null.';
+    scene = createScene();};
+    initFunction().then(() => {sceneToRender = scene        
+        engine.runRenderLoop(function () {
+            if (sceneToRender && sceneToRender.activeCamera) {
+                sceneToRender.render();
+            }
+        });
+    });
+
+    // Resize
+    window.addEventListener("resize", function () {
+        engine.resize();
+    });
+
+    </script>
+</body>
+
+</html>
