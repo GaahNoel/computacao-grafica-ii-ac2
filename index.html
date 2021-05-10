@@ -77,26 +77,48 @@
         var ground = createGround(scene);
         createSkyBox();
         createCharacter(camera, scene, ground);
-        createBarrel("1", scene);
+
+        for(let i=0; i<10; i++){
+            createBarrel(i, scene);
+        }
         //scene.debugLayer.show();
 
         //balloon 3 intersection on single point
         scene.registerBeforeRender(function () {
             var hero = scene.getMeshByID("hero");
             //var barrel = scene.getMeshByID("Barrel_low");
-            var barrel = scene.getMeshByID("barrel1");
             
+            for(let i = 0; i < 10; i++){
+                var barrel = scene.getMeshByID(`barrel${i}`);
+                if(hero && barrel){
+                    var barrelChildren = barrel.getChildren();
+                    var barrelBody = barrelChildren[2];
 
-            if(hero && barrel){
-                var barrelChildren = barrel.getChildren();
-                var barrelBody = barrelChildren[2];
+                    if(hero.intersectsMesh(barrelBody, true)) {
+                        console.log("ENTROU");
+                        // var newExplosion = new BABYLON.MeshExploder(barrelChildren, barrelBody);
+                        // newExplosion.explode(2);
 
-                if(hero.intersectsMesh(barrelBody, true)) {
-                    console.log("ENTROU");
-                    // var newExplosion = new BABYLON.MeshExploder(barrelChildren, barrelBody);
-                    // newExplosion.explode(2);
-                    
-                    barrel.dispose(false, true);
+                        const barrelPosX = barrel.position.x;
+                        const barrelPosZ = barrel.position.z;
+
+                        BABYLON.ParticleHelper.CreateAsync("explosion", scene).then((set) => {
+                        set.systems.forEach(s => {
+                                s.emitter.x = barrelPosX;
+                                s.emitter.z = barrelPosZ;
+                                s.emitter.y = -10;
+                                s.disposeOnStop = true;
+                                
+                            });
+                            set.start();
+                            var music = new BABYLON.Sound("Music", "assets/sounds/explosion.mp3", scene, null, {
+                                loop: false,
+                                autoplay: true
+                            });
+                        });
+                        
+                        barrel.dispose(false, true);
+                    }
                 }
             }
             
@@ -136,6 +158,7 @@
         skyboxMaterial.disableLighting = true;
 	    skybox.material = skyboxMaterial;
     }
+    
     const isValidPosition = (hero,heroSpeed) => {
         const looking = hero.forward.scaleInPlace(heroSpeed);
         const zNegative = looking.z < 0 ? -1 : 1;
@@ -266,7 +289,8 @@
             barrel.scaling.x = 0.02;
             barrel.scaling.y = 0.02;
             barrel.scaling.z = 0.02;
-            barrel.position.x = 20
+            barrel.position.x = barrel.position.x =  Math.random() * (30-(-30)) - 30;
+            barrel.position.z = barrel.position.z =  Math.random() * (30-(-30)) - 30;
             barrel.position.y= -10;
         });
     }
