@@ -78,7 +78,7 @@
 
     posItems = shuffle(posItems);
 
-    var createScene = function() {
+    var createScene = async function() {
         var scene = new BABYLON.Scene(engine);
 
         //scene.collisionsEnabled = true;
@@ -107,9 +107,8 @@
             createBarrel(i, scene);
         }
 
-        const itemsStack = createCollectable(scene);
-
-        console.log(itemsStack);
+        const itemsStack = await createCollectable(scene);
+        console.log(itemsStack[itemsStack.length-1].id);
 
         //scene.debugLayer.show();
 
@@ -154,10 +153,15 @@
     
             itemsStack.forEach(item =>{
                 if(hero && item){
-                    //console.log(item.id + " - " + itemsStack[itemsStack.length-1].id);
-                    if(hero.intersectsMesh(item, true) && item.id == itemsStack[itemsStack.length-1].id) {
-                        console.log("TESTE");
-                        item.dispose(false, true);
+                    // console.log(item.id + " - " + itemsStack[itemsStack.length-1].id);
+                    if(hero.intersectsMesh(item, true) && itemsStack[itemsStack.length-1].id === item.id) {
+                        const meshes = scene.getMeshesByID(item.id);
+                        meshes.forEach(mesh => {
+                            mesh.dispose(false, true);
+                        })
+                        itemsStack.pop();
+                        console.log(itemsStack.length > 0 ? `continue: ${itemsStack[itemsStack.length-1].id}` : 'fim de jogo');
+
                         score++;
                     }
                 }
@@ -356,9 +360,7 @@
         });
     }
 
-    var createCollectable = function (scene){
-
-        let itemsStack = [];
+    var createCollectable = async function (scene){
 
         const collectables = [
             { "link":"https://playground.babylonjs.com/scenes/", "name":"Rabbit.babylon", "scale": "0.025" },
@@ -373,46 +375,59 @@
             { "link": "https://playground.babylonjs.com/scenes/", "name": "skull.babylon", "scale": "0.01" }
         ];
 
-        collectables.forEach(collectable => {
+        const collectablesMap = collectables.map(async collectable => {
             
-            BABYLON.SceneLoader.ImportMesh("", collectable.link, collectable.name, scene, function(meshes){          
-                const item = new BABYLON.Mesh(collectable.name, scene);
-                meshes.forEach(mesh => {
-                    mesh.setParent(item);
-                    item.addChild(mesh);
-                });
-
-                item.scaling.x = collectable.scale;
-                item.scaling.y = collectable.scale;
-                item.scaling.z = collectable.scale;
-
-                //Pega posição do vetor posItems
-                posicaoItemAtual = posItems.pop();
-                item.position.x = posicaoItemAtual.x;
-                item.position.z = posicaoItemAtual.z;
-                item.position.y= -10;
-
-                if(collectable.name == "shark.glb"){
-                    item.rotation.x = -Math.PI/3;
-                    item.position.y = -11.7;
-                }
-                    
-                if(collectable.name == "Buggy.gltf")
-                    item.position.y = -9.8;
-
-                if(collectable.name == "skull.babylon")
-                    item.position.y = -9.75;
-                
-                if(collectable.name == "seagulf.glb")
-                    item.position.y = -9.2;
-
-                itemsStack.push(item);
+            const response = await BABYLON.SceneLoader.ImportMeshAsync("", collectable.link, collectable.name, scene)
+            const meshes = response.meshes
+            const item = new BABYLON.Mesh(collectable.name, scene);
+            meshes.forEach(mesh => {
+                mesh.setParent(item);
+                item.addChild(mesh);
             });
-        });
 
-        itemsStack = shuffle(itemsStack);
-        return itemsStack;
-        
+            item.scaling.x = collectable.scale;
+            item.scaling.y = collectable.scale;
+            item.scaling.z = collectable.scale;
+
+            //Pega posição do vetor posItems
+            posicaoItemAtual = posItems.pop();
+
+            var hitBox = BABYLON.MeshBuilder.CreateBox(collectable.name, {size: 3}, scene);
+            hitBox.position =  new BABYLON.Vector3(posicaoItemAtual.x, -10, posicaoItemAtual.z);
+            hitBox.isVisible = false;
+
+            item.position.x = posicaoItemAtual.x;
+            item.position.z = posicaoItemAtual.z;
+            item.position.y= -10;
+
+            if(collectable.name == "shark.glb"){
+                item.rotation.x = -Math.PI/3;
+                item.position.y = -11.7;
+            }
+                
+            if(collectable.name == "Buggy.gltf") {
+                
+                item.position.y = -9.8;
+                hitBox.position.y = -9.8;
+            }
+
+            if(collectable.name == "skull.babylon") {
+                item.position.y = -9.75;
+                hitBox.position.y = -9.75;
+            }
+            
+            if(collectable.name == "seagulf.glb") {
+                item.position.y = -9.2;
+                hitBox.position.y = -9.2;
+            }
+
+            return hitBox;
+        });
+        const itemsStack = await Promise.all(collectablesMap);
+        const shuffledItemsStack = shuffle(itemsStack);
+
+        return shuffledItemsStack;
+   
     }
 
     var createHUD = function(scene){
@@ -471,7 +486,7 @@
 
     engine = await asyncEngineCreation();
     if (!engine) throw 'engine should not be null.';
-    scene = createScene();};
+    scene = await createScene();};
     initFunction().then(() => {sceneToRender = scene        
         engine.runRenderLoop(function () {
             if (sceneToRender && sceneToRender.activeCamera) {
