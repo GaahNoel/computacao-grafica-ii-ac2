@@ -70,6 +70,7 @@
     var engine = null;
     var scene = null;
     var sceneToRender = null;
+    var advancedTexture;
 
     var createDefaultEngine = function() { return new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true,  disableWebGL2Support: false}); };
     var score = 0;
@@ -97,6 +98,8 @@
     ];
 
     posItems = shuffle(posItems);
+    
+    var nextItemName = '';
 
     var createScene = async function() {
         var scene = new BABYLON.Scene(engine);
@@ -118,7 +121,7 @@
         light1.intensity =0.75;
         light2.intensity =0.5;
 
-        createHUD(scene);
+        advancedTexture = createHUD(scene);
         var ground = createGround(scene);
         createSkyBox();
         createCharacter(camera, scene, ground);
@@ -133,7 +136,23 @@
         loader.style.visibility = 'hidden';
         loader.style.height = '0';
 
-        console.log(itemsStack[itemsStack.length-1].id);
+        if(itemsStack[itemsStack.length-1]) {
+            changeNextColor(itemsStack[itemsStack.length-1], scene);
+            const name = changeNextName(itemsStack[itemsStack.length-1].id);
+            nextItemName = name;
+            if(advancedTexture)
+                advancedTexture.dispose();
+
+            advancedTexture = createHUD(scene);
+        }
+
+
+        var music = new BABYLON.Sound("Music", "assets/sounds/soundtrack.mp3", scene, null, {
+            loop: true,
+            autoplay: true,
+            volume: 0.1
+        });
+
 
         //scene.debugLayer.show();
 
@@ -180,8 +199,30 @@
                         meshes.forEach(mesh => {
                             mesh.dispose(false, true);
                         })
+                        var music = new BABYLON.Sound("Music", "assets/sounds/coin.mp3", scene, null, {
+                                loop: false,
+                                autoplay: true
+                        });
+
                         itemsStack.pop();
-                        console.log(itemsStack.length > 0 ? `continue: ${itemsStack[itemsStack.length-1].id}` : 'fim de jogo');
+
+                        if(itemsStack.length > 0) {
+                            const newItem = itemsStack[itemsStack.length-1];
+                            const id = newItem.id;
+
+                            changeNextColor(newItem, scene);
+                            const name = changeNextName(id);
+                            nextItemName = name;
+
+                            if(advancedTexture)
+                                advancedTexture.dispose();
+
+                            advancedTexture = createHUD(scene);
+                            console.log(name);
+
+                        } else {
+                            console.log("Fim de jogo");
+                        }
                         score++;
                     }
                 }
@@ -196,6 +237,38 @@
         })
         return scene;
     };
+
+    function changeNextColor(next, scene) {
+        const nextMeshes = scene.getMeshesByID(next.id);
+        nextMeshes.forEach(mesh => {
+            const material = new BABYLON.StandardMaterial("next-item",scene);
+            material.diffuseColor = new BABYLON.Color3(1,0,0);
+            mesh.material = material;
+            const children = mesh.getChildren();
+
+            if(children.length > 0) {
+                children.forEach((child) => {
+                    child.material = material;
+                });
+            };
+        });
+    }
+
+    function changeNextName(id) {
+       const names = {
+           "shark.glb": "Tubarão encalhado",
+           "flightHelmet.glb" : "Mascara de Gás",
+           "skull.babylon": "Crânio de Caveira",
+           "Rabbit.babylon": "Coelho",
+           "toast_acrobatics.glb": "Torradeira acrobática",
+           "seagulf.glb": "Pássaro de Headset",
+           "vintageFan_animated.gltf": "Ventilador",
+           "candle.babylon": "Vela",
+           "dragon.babylon": "Estátua de Dragão",
+           "Buggy.gltf": "Carrinho de brinquedo",
+       }
+        return names[id];
+    }
 
     function shuffle(array) {
         var currentIndex = array.length, temporaryValue, randomIndex;
@@ -286,6 +359,7 @@
 
             scene.onBeforeRenderObservable.add(() => {
                 var keydown = false;
+                var samba = false;
                 if (inputMap["w"]) {
                     if(isValidPosition(hero,heroSpeed) || score >= 10) {
                         return;
@@ -311,15 +385,19 @@
                 if (inputMap["b"]) {
                     keydown = true;
                 }
+                if(score >= 10) {
+                    keydown = false;
+                    sambaAnim.start(true, 1.0, sambaAnim.from, sambaAnim.to, false);
+                }
 
-                if (keydown || score >= 10) {
+                if (keydown) {
                     if (!animating) {
                         animating = true;
                         if (inputMap["s"]) {
                             walkBackAnim.start(true, 1.0, walkBackAnim.from, walkBackAnim.to, false);
                         }
                         else if
-                            (inputMap["b"] || score >= 10) {
+                            (inputMap["b"]) {
                             sambaAnim.start(true, 1.0, sambaAnim.from, sambaAnim.to, false);
                         }
                         else {
@@ -427,6 +505,11 @@
                 item.position.y = -9.75;
                 hitBox.position.y = -9.75;
             }
+
+            if(collectable.name == "toast_acrobatics.glb") {
+                hitBox.position.y += 1;
+                hitBox.position.x -= 1;
+            }
             
             if(collectable.name == "seagulf.glb") {
                 item.position.y = -9.2;
@@ -443,8 +526,7 @@
     }
 
     var createHUD = function(scene){
-        
-        let advancedTexture;
+        var advancedTexture;
 
         var buildUI = function () {
             if (advancedTexture) {
@@ -453,23 +535,26 @@
             advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
 
             var topPanel = new BABYLON.GUI.StackPanel();
-            topPanel.height = "650px";
+            topPanel.height = "100%";
             topPanel.paddingBottom = "5px";
+            topPanel.paddingTop = "15px";
             topPanel.isVertical = true;
             topPanel.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_STRETCH;
             topPanel.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_BOTTOM;
             topPanel.fontSize = 26;
+
             advancedTexture.addControl(topPanel);
 
             var addHeader = function (text, panel, alinhamento) {
                 var header = new BABYLON.GUI.TextBlock();
                 header.text = text;
                 header.height = "30px";
-                header.color = "white";
+                header.color = "black";
                 header.outlineWidth = "4px";
-                header.outlineColor = "black";
+                header.outlineColor = "white";
                 header.textHorizontalAlignment = alinhamento;
 
+            
                 panel.addControl(header);
             }
 
@@ -478,6 +563,7 @@
             addHeader("AVALIAÇÃO - AC2", topPanel, alinhamentoCentro);
             addHeader("Gabriel Antonio Noel - 180274", topPanel, alinhamentoCentro);
             addHeader("Gustavo dos Santos Nogueira - 181010", topPanel, alinhamentoCentro);
+            addHeader(nextItemName ? `Proximo ----> ${nextItemName}`: 'Fim de jogo', topPanel, alinhamentoCentro);
         }
 
         buildUI();
