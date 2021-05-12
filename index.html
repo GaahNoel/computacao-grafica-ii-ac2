@@ -150,7 +150,7 @@
         var music = new BABYLON.Sound("Music", "assets/sounds/soundtrack.mp3", scene, null, {
             loop: true,
             autoplay: true,
-            volume: 0.1
+            volume: 0.05
         });
 
 
@@ -180,9 +180,14 @@
                                 
                             });
                             set.start();
-                            var music = new BABYLON.Sound("Music", "assets/sounds/explosion.mp3", scene, null, {
+                            var explosion = new BABYLON.Sound("Music", "assets/sounds/explosion.mp3", scene, null, {
                                 loop: false,
                                 autoplay: true
+                            });
+                            var damageSound = new BABYLON.Sound("Music", "assets/sounds/damageSound.mp3", scene, null, {
+                                loop: false,
+                                autoplay: true,
+                                volume: 0.1
                             });
                         });
                         
@@ -199,9 +204,10 @@
                         meshes.forEach(mesh => {
                             mesh.dispose(false, true);
                         })
-                        var music = new BABYLON.Sound("Music", "assets/sounds/coin.mp3", scene, null, {
+                        var coin = new BABYLON.Sound("Music", "assets/sounds/coin.mp3", scene, null, {
                                 loop: false,
-                                autoplay: true
+                                autoplay: true,
+                                volume: 0.4
                         });
 
                         itemsStack.pop();
@@ -214,16 +220,73 @@
                             const name = changeNextName(id);
                             nextItemName = name;
 
-                            if(advancedTexture)
-                                advancedTexture.dispose();
-
-                            advancedTexture = createHUD(scene);
                             console.log(name);
 
                         } else {
+                            music.stop();
+                            var victory = new BABYLON.Sound("Music", "assets/sounds/victory.mp3", scene, null, {
+                                loop: false,
+                                autoplay: true,
+                                volume: 0.1
+                            });
+
+                            var advancedTextureM;
+
+                            var buildUI = function () {
+                                if (advancedTextureM) {
+                                    advancedTextureM.dispose();
+                                }
+                                advancedTextureM = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
+
+                                var middlePanel = new BABYLON.GUI.StackPanel();
+                                middlePanel.paddingBottom = "5px";
+                                middlePanel.paddingTop = "15px";
+                                middlePanel.isVertical = true;
+                                middlePanel.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_STRETCH;
+                                middlePanel.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_CENTER;
+                                middlePanel.fontSize = 42;
+
+                                var footPanel = new BABYLON.GUI.StackPanel();
+                                footPanel.paddingBottom = "15px";
+                                footPanel.paddingTop = "15px";
+                                footPanel.isVertical = true;
+                                footPanel.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_STRETCH;
+                                footPanel.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_BOTTOM;
+                                footPanel.fontSize = 26;
+
+                                advancedTextureM.addControl(middlePanel);
+                                advancedTextureM.addControl(footPanel);
+
+                                var addHeader = function (text, panel, alinhamento) {
+                                    var header = new BABYLON.GUI.TextBlock();
+                                    header.text = text;
+                                    header.height = "30px";
+                                    header.color = "black";
+                                    header.outlineWidth = "4px";
+                                    header.outlineColor = "white";
+                                    header.textHorizontalAlignment = alinhamento;
+
+                                    panel.addControl(header);
+                                }
+
+                                var alinhamentoCentro = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_CENTER;
+
+                                addHeader(`APERTE O BOTÃO 'F' PARA JOGAR NOVAMENTE`, middlePanel, alinhamentoCentro);
+                                addHeader("AVALIAÇÃO - AC2", footPanel, alinhamentoCentro);
+                                addHeader("Gabriel Antonio Noel - 180274", footPanel, alinhamentoCentro);
+                                addHeader("Gustavo dos Santos Nogueira - 181010", footPanel, alinhamentoCentro);
+                            }
+
+                            buildUI();
+
                             console.log("Fim de jogo");
+
                         }
                         score++;
+                        if(advancedTexture)
+                                advancedTexture.dispose();
+                        if(itemsStack.length > 0)
+                            advancedTexture = createHUD(scene);
                     }
                 }
             })
@@ -360,44 +423,48 @@
             scene.onBeforeRenderObservable.add(() => {
                 var keydown = false;
                 var samba = false;
-                if (inputMap["w"]) {
+                if (inputMap["w"] || inputMap["W"]) {
                     if(isValidPosition(hero,heroSpeed) || score >= 10) {
                         return;
                     } 
                     hero.moveWithCollisions(hero.forward.scaleInPlace(heroSpeed));
                     keydown = true;
                 }
-                if (inputMap["s"] ) {
+                if (inputMap["s"] || inputMap["S"] ) {
                     if(isValidPosition(hero,-heroSpeedBackwards) || score >= 10) {
                         return;
                     }
                     hero.moveWithCollisions(hero.forward.scaleInPlace(-heroSpeedBackwards));
                     keydown = true;
                 }
-                if (inputMap["a"]) {
+                if (inputMap["a"] || inputMap["A"]) {
                     hero.rotate(BABYLON.Vector3.Up(), -heroRotationSpeed);
                     keydown = true;
                 }
-                if (inputMap["d"]) {
+                if (inputMap["d"] || inputMap["D"]) {
                     hero.rotate(BABYLON.Vector3.Up(), heroRotationSpeed);
                     keydown = true;
                 }
-                if (inputMap["b"]) {
+                if (inputMap["b"] || inputMap["B"]) {
                     keydown = true;
                 }
                 if(score >= 10) {
                     keydown = false;
                     sambaAnim.start(true, 1.0, sambaAnim.from, sambaAnim.to, false);
+                    if (inputMap["f"] || inputMap["F"]) {
+                        score = 0;
+                        console.log(score);
+                    }
                 }
 
                 if (keydown) {
                     if (!animating) {
                         animating = true;
-                        if (inputMap["s"]) {
+                        if (inputMap["s"] || inputMap["S"]) {
                             walkBackAnim.start(true, 1.0, walkBackAnim.from, walkBackAnim.to, false);
                         }
                         else if
-                            (inputMap["b"]) {
+                            (inputMap["b"] || inputMap["B"]) {
                             sambaAnim.start(true, 1.0, sambaAnim.from, sambaAnim.to, false);
                         }
                         else {
@@ -535,15 +602,24 @@
             advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
 
             var topPanel = new BABYLON.GUI.StackPanel();
-            topPanel.height = "100%";
             topPanel.paddingBottom = "5px";
             topPanel.paddingTop = "15px";
             topPanel.isVertical = true;
             topPanel.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_STRETCH;
-            topPanel.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_BOTTOM;
+            topPanel.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_TOP;
             topPanel.fontSize = 26;
 
+            var footPanel = new BABYLON.GUI.StackPanel();
+            footPanel.paddingBottom = "15px";
+            footPanel.paddingTop = "15px";
+            footPanel.isVertical = true;
+            footPanel.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_STRETCH;
+            footPanel.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_BOTTOM;
+            footPanel.fontSize = 26;
+
             advancedTexture.addControl(topPanel);
+
+            advancedTexture.addControl(footPanel);
 
             var addHeader = function (text, panel, alinhamento) {
                 var header = new BABYLON.GUI.TextBlock();
@@ -560,10 +636,12 @@
 
             var alinhamentoCentro = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_CENTER;
 
-            addHeader("AVALIAÇÃO - AC2", topPanel, alinhamentoCentro);
-            addHeader("Gabriel Antonio Noel - 180274", topPanel, alinhamentoCentro);
-            addHeader("Gustavo dos Santos Nogueira - 181010", topPanel, alinhamentoCentro);
+            
+            addHeader(`SCORE: ${score}`, topPanel, alinhamentoCentro);
             addHeader(nextItemName ? `Proximo ----> ${nextItemName}`: 'Fim de jogo', topPanel, alinhamentoCentro);
+            addHeader("AVALIAÇÃO - AC2", footPanel, alinhamentoCentro);
+            addHeader("Gabriel Antonio Noel - 180274", footPanel, alinhamentoCentro);
+            addHeader("Gustavo dos Santos Nogueira - 181010", footPanel, alinhamentoCentro);
         }
 
         buildUI();
