@@ -77,6 +77,7 @@
 
     var createDefaultEngine = function() { return new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true,  disableWebGL2Support: false}); };
     var score = 0;
+    var music;
     var posItems = [
         { x:"-2",z:"-2"},
         { x:"-3",z:"2"},
@@ -103,33 +104,13 @@
     posItems = shuffle(posItems);
 
     var newRunItems = [];
-    var newRunPosItems = [
-        { x:"-2",z:"-2"},
-        { x:"-3",z:"2"},
-        { x:"-11",z:"-12"},
-        { x:"11",z:"-12"},
-        { x:"7", z:"12"},
-        { x:"-7",z:"12"},
-        { x:"-5",z:"-11"},
-        { x:"5" ,z:"-11"},
-        { x:"-9",z:" -7"},
-        { x:"9" ,z:"-7"},
-        { x:"18",z:" 5"},
-        { x:"-18",z:" 5"},
-        { x:"-4",z:" 9"},
-        { x:"4",z:" 9"},
-        { x:"-16", z:"-18"},
-        { x:"16",z:" -18"},
-        { x:"-12",z:"-4"},
-        { x:"12",z:" -4"},
-        { x:"-2",z:" -17"},
-        { x:"2", z:"-17"}
-    ];
+    var newRunPosItems = [];
     var newBarrels = [];    
 
     var barrels= [];
     var nextItemName = '';
     var itemsStack;
+    var lastIndex = posItems.length - 1;
 
     var createScene = async function() {
         var scene = new BABYLON.Scene(engine);
@@ -185,14 +166,14 @@
         }
 
 
-        var music = new BABYLON.Sound("Music", "assets/sounds/soundtrack.mp3", scene, null, {
+        music = new BABYLON.Sound("Music", "assets/sounds/soundtrack.mp3", scene, null, {
             loop: true,
             autoplay: true,
             volume: 0.05
         });
 
 
-        //scene.debugLayer.show();
+        // scene.debugLayer.show();
 
         //balloon 3 intersection on single point
         scene.registerBeforeRender(function () {
@@ -215,9 +196,9 @@
                                 s.emitter.z = barrelPosZ;
                                 s.emitter.y = -10;
                                 s.disposeOnStop = true;
-                                
                             });
                             set.start();
+                        
                             var explosion = new BABYLON.Sound("Music", "assets/sounds/explosion.mp3", scene, null, {
                                 loop: false,
                                 autoplay: true
@@ -228,8 +209,10 @@
                                 volume: 0.1
                             });
                         });
+                       
                         
-                        barrel.dispose();
+                        barrel.setEnabled(false);
+                        barrel.isVisible = false;
                     }
                 }
             }
@@ -405,7 +388,6 @@
             };
         });
         newRunItems.push(copyMesh);
-        //console.log(newRunItems);
     }
 
     function changeNextName(id) {
@@ -541,12 +523,12 @@
                 }
                 if(score >= 10) {
                     keydown = false;
+                    music.stop();
                     sambaAnim.start(true, 1.0, sambaAnim.from, sambaAnim.to, false);
                     if (inputMap["f"] || inputMap["F"]) {
                         victory.stop();
                         advancedTextureM.dispose();
                         score = 0;
-                        console.log(newRunItems);
                         resetScene(scene);
                         //console.log(score);
                     }
@@ -605,7 +587,9 @@
             barrel.scaling.z = 0.02;
 
             //Pega posição do vetor posItems
-            posicaoItemAtual = posItems.pop();
+            posicaoItemAtual = posItems[lastIndex];
+            lastIndex--;
+
             barrel.position.x = posicaoItemAtual.x;
             barrel.position.z = posicaoItemAtual.z;
             barrel.position.y= -10;
@@ -645,7 +629,8 @@
             item.scaling.z = collectable.scale;
 
             //Pega posição do vetor posItems
-            posicaoItemAtual = posItems.pop();
+            posicaoItemAtual = posItems[lastIndex];
+            lastIndex--;
 
             var hitBox = BABYLON.MeshBuilder.CreateBox(collectable.name, {size: 3}, scene);
             hitBox.position =  new BABYLON.Vector3(posicaoItemAtual.x, -10, posicaoItemAtual.z);
@@ -750,11 +735,14 @@
 
     function resetScene(scene) {
         itemsStack = [];
-        const sortedPosItems = shuffle(newRunPosItems);
-        posItems = [...sortedPosItems];
+        posItems = shuffle(posItems);
+        lastIndex = posItems.length - 1;
+        console.log(newRunItems);
 
         newRunItems.forEach(mesh => {
-            const pos = posItems.pop();
+            const pos = posItems[lastIndex];
+            console.log(lastIndex);
+            lastIndex--;
 
             const hitbox = mesh['hitbox'];
             const principal = mesh['principal'];
@@ -800,17 +788,15 @@
             itemsStack.push(hitbox);
 
         });
+        newRunItems = [];
 
-        var music = new BABYLON.Sound("Music", "assets/sounds/soundtrack.mp3", scene, null, {
+        music = new BABYLON.Sound("Music", "assets/sounds/soundtrack.mp3", scene, null, {
             loop: true,
             autoplay: true,
             volume: 0.05
         });
 
-
         if(itemsStack[itemsStack.length-1]) {
-            console.log(itemsStack[itemsStack.length-1]);
-            console.log(itemsStack[itemsStack.length-1].position);
 
             changeNextColor(itemsStack[itemsStack.length-1], scene);
             const name = changeNextName(itemsStack[itemsStack.length-1].id);
@@ -821,24 +807,20 @@
             advancedTexture = createHUD(scene);
         }
 
-        //(itemsStack);
+        music.pause();
 
-        // if(itemsStack[itemsStack.length-1]) {
-        //     changeNextColor(itemsStack[itemsStack.length-1], scene);
-        //     const name = changeNextName(itemsStack[itemsStack.length-1].id);
-        //     nextItemName = name;
-        //     if(advancedTexture)
-        //         advancedTexture.dispose();
+        barrels.forEach(barrel => {
+            barrel.setEnabled(true);
+            barrel.isVisible = true;
 
-        //     advancedTexture = createHUD(scene);
-        // }
+            const pos = posItems[lastIndex];
+            lastIndex--;
 
-        // barrels.forEach(barrel => {
-        //     barrel.setEnabled(true);
-        //     const pos = posItems.pop()
-        //     barrel.position.x = pos.x;
-        //     barrel.position.y = pos.y;
-        // })
+            barrel.position.x = pos.x;
+            barrel.position.z = pos.z;
+            barrel.position.y = -10;
+        });
+
 
        //createHUD(scene);
     }
