@@ -71,6 +71,9 @@
     var scene = null;
     var sceneToRender = null;
     var advancedTexture;
+    var advancedTextureM;
+
+    var victory;
 
     var createDefaultEngine = function() { return new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true,  disableWebGL2Support: false}); };
     var score = 0;
@@ -100,7 +103,28 @@
     posItems = shuffle(posItems);
 
     var newRunItems = [];
-    var newRunPosItems = [...posItems];
+    var newRunPosItems = [
+        { x:"-2",z:"-2"},
+        { x:"-3",z:"2"},
+        { x:"-11",z:"-12"},
+        { x:"11",z:"-12"},
+        { x:"7", z:"12"},
+        { x:"-7",z:"12"},
+        { x:"-5",z:"-11"},
+        { x:"5" ,z:"-11"},
+        { x:"-9",z:" -7"},
+        { x:"9" ,z:"-7"},
+        { x:"18",z:" 5"},
+        { x:"-18",z:" 5"},
+        { x:"-4",z:" 9"},
+        { x:"4",z:" 9"},
+        { x:"-16", z:"-18"},
+        { x:"16",z:" -18"},
+        { x:"-12",z:"-4"},
+        { x:"12",z:" -4"},
+        { x:"-2",z:" -17"},
+        { x:"2", z:"-17"}
+    ];
     var newBarrels = [];    
 
     var barrels= [];
@@ -143,7 +167,7 @@
         // });
 
         itemsStack = await createCollectable(scene);
-        console.log(itemsStack);
+        //console.log(itemsStack);
 
         const loader = document.querySelector('.loader-container');
         loader.style.opacity = '0';
@@ -213,14 +237,11 @@
             itemsStack.forEach(item =>{
                 if(hero && item){
                     // console.log(item.id + " - " + itemsStack[itemsStack.length-1].id);
+                    
                     if(hero.intersectsMesh(item, true) && itemsStack[itemsStack.length-1].id === item.id) {
                         const meshes = scene.getMeshesByID(item.id);
-                        meshes.forEach(mesh => {
-                            if(mesh.isEnabled) {
-                                mesh.dispose();
-                            }
-                        })
-
+                        if(hero.position.x + 1 > meshes[0].position.x && hero.position.x - 1 < meshes[0].position.x){
+                            
                         var coin = new BABYLON.Sound("Music", "assets/sounds/coin.mp3", scene, null, {
                                 loop: false,
                                 autoplay: true,
@@ -229,29 +250,42 @@
 
                         itemsStack.pop();
 
+                        meshes.forEach(mesh => {
+                            if(mesh._isEnabled) {
+                                mesh.setEnabled(false);
+                                mesh.dispose();
+                            }
+                        })
+
                         if(itemsStack.length > 0) {
                             const newItem = itemsStack[itemsStack.length-1];
                             const id = newItem.id;
-
                             changeNextColor(newItem, scene);
                             const name = changeNextName(id);
                             nextItemName = name;
+                            score++;
 
                         } else {
                             music.stop();
-                            var victory = new BABYLON.Sound("Music", "assets/sounds/victory.mp3", scene, null, {
+                            victory = new BABYLON.Sound("Music", "assets/sounds/victory.mp3", scene, null, {
                                 loop: false,
                                 autoplay: true,
                                 volume: 0.1
                             });
-
-                            var advancedTextureM;
 
                             var buildUI = function () {
                                 if (advancedTextureM) {
                                     advancedTextureM.dispose();
                                 }
                                 advancedTextureM = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
+
+                                var topPanel = new BABYLON.GUI.StackPanel();
+                                topPanel.paddingBottom = "5px";
+                                topPanel.paddingTop = "15px";
+                                topPanel.isVertical = true;
+                                topPanel.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_STRETCH;
+                                topPanel.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_TOP;
+                                topPanel.fontSize = 36;
 
                                 var middlePanel = new BABYLON.GUI.StackPanel();
                                 middlePanel.paddingBottom = "5px";
@@ -269,10 +303,12 @@
                                 footPanel.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_BOTTOM;
                                 footPanel.fontSize = 26;
 
+                                advancedTextureM.addControl(topPanel);
                                 advancedTextureM.addControl(middlePanel);
                                 advancedTextureM.addControl(footPanel);
 
                                 var addHeader = function (text, panel, alinhamento) {
+                                    //console.log(text + "  " + panel + "  " + alinhamento)
                                     var header = new BABYLON.GUI.TextBlock();
                                     header.text = text;
                                     header.height = "30px";
@@ -286,22 +322,24 @@
 
                                 var alinhamentoCentro = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_CENTER;
 
+                                addHeader(`SCORE: ${score}`, topPanel, alinhamentoCentro);
                                 addHeader(`APERTE O BOTÃO 'F' PARA JOGAR NOVAMENTE`, middlePanel, alinhamentoCentro);
                                 addHeader("AVALIAÇÃO - AC2", footPanel, alinhamentoCentro);
                                 addHeader("Gabriel Antonio Noel - 180274", footPanel, alinhamentoCentro);
                                 addHeader("Gustavo dos Santos Nogueira - 181010", footPanel, alinhamentoCentro);
                             }
-
+                            score++;
                             buildUI();
 
-                            console.log("Fim de jogo");
+                            //console.log("Fim de jogo");
 
                         }
-                        score++;
+
                         if(advancedTexture)
                                 advancedTexture.dispose();
                         if(itemsStack.length > 0)
                             advancedTexture = createHUD(scene);
+                        }
                     }
                 }
             })
@@ -334,7 +372,11 @@
         const nextMeshes = scene.getMeshesByID(next.id);
 
         const copyMesh = {};
+
         nextMeshes.forEach(mesh => {
+            if(!mesh.isEnabled)
+                return;
+
             if(mesh.name === 'hitbox') {
                 copyMesh['hitbox'] = mesh.clone();
                 copyMesh['hitbox'].id = mesh.id;
@@ -348,8 +390,8 @@
                 copyMesh['principal'].setEnabled(false);
             }
 
-            if(!mesh.isEnabled)
-                return;
+            console.log(mesh.position);
+           
 
             const material = new BABYLON.StandardMaterial("next-item",scene);
             material.diffuseColor = new BABYLON.Color3(1,0,0);
@@ -363,7 +405,7 @@
             };
         });
         newRunItems.push(copyMesh);
-        console.log(newRunItems);
+        //console.log(newRunItems);
     }
 
     function changeNextName(id) {
@@ -501,9 +543,12 @@
                     keydown = false;
                     sambaAnim.start(true, 1.0, sambaAnim.from, sambaAnim.to, false);
                     if (inputMap["f"] || inputMap["F"]) {
+                        victory.stop();
+                        advancedTextureM.dispose();
                         score = 0;
+                        console.log(newRunItems);
                         resetScene(scene);
-                        console.log(score);
+                        //console.log(score);
                     }
                 }
 
@@ -641,7 +686,7 @@
         });
         const itemsStack = await Promise.all(collectablesMap);
         const shuffledItemsStack = shuffle(itemsStack);
-        console.log(shuffledItemsStack);
+        //console.log(shuffledItemsStack);
 
         return shuffledItemsStack;
    
@@ -704,20 +749,19 @@
     }
 
     function resetScene(scene) {
-        if(advancedTexture)
-                advancedTexture.dispose();
-                
+        itemsStack = [];
         const sortedPosItems = shuffle(newRunPosItems);
         posItems = [...sortedPosItems];
 
         newRunItems.forEach(mesh => {
-            const pos = posItems.pop()
+            const pos = posItems.pop();
 
             const hitbox = mesh['hitbox'];
             const principal = mesh['principal'];
 
             hitbox.setEnabled(true);
             principal.setEnabled(true);
+            principal.isVisible = true;
 
             hitbox.position.x = pos.x;
             hitbox.position.z = pos.z;
@@ -727,17 +771,57 @@
             principal.position.z = pos.z;
             principal.position.y = -10;
 
-            itemsStack.push(hitbox);
-        });
+            if(principal.id == "shark.glb"){
+                principal.rotation.x = -Math.PI/3;
+                principal.position.y = -11.7;
+            }
+                
+            if(principal.id == "Buggy.gltf") {
+                
+                principal.position.y = -9.8;
+                hitbox.position.y = -9.8;
+            }
 
-        newRun= [];
-        newRunPosItems= [];
+            if(principal.id == "skull.babylon") {
+                principal.position.y = -9.75;
+                hitbox.position.y = -9.75;
+            }
+
+            if(principal.id == "toast_acrobatics.glb") {
+                hitbox.position.y += 1;
+                hitbox.position.x -= 1;
+            }
+            
+            if(principal.id == "seagulf.glb") {
+                principal.position.y = -9.2;
+                hitbox.position.y = -9.2;
+            }
+
+            itemsStack.push(hitbox);
+
+        });
 
         var music = new BABYLON.Sound("Music", "assets/sounds/soundtrack.mp3", scene, null, {
             loop: true,
             autoplay: true,
             volume: 0.05
         });
+
+
+        if(itemsStack[itemsStack.length-1]) {
+            console.log(itemsStack[itemsStack.length-1]);
+            console.log(itemsStack[itemsStack.length-1].position);
+
+            changeNextColor(itemsStack[itemsStack.length-1], scene);
+            const name = changeNextName(itemsStack[itemsStack.length-1].id);
+            nextItemName = name;
+            if(advancedTexture)
+                advancedTexture.dispose();
+
+            advancedTexture = createHUD(scene);
+        }
+
+        //(itemsStack);
 
         // if(itemsStack[itemsStack.length-1]) {
         //     changeNextColor(itemsStack[itemsStack.length-1], scene);
@@ -756,8 +840,7 @@
         //     barrel.position.y = pos.y;
         // })
 
-       score = 0;
-       createHUD(scene);
+       //createHUD(scene);
     }
 
     var engine;
@@ -767,7 +850,7 @@
             try {
             return createDefaultEngine();
             } catch(e) {
-            console.log("the available createEngine function failed. Creating the default engine instead");
+            //console.log("the available createEngine function failed. Creating the default engine instead");
             return createDefaultEngine();
             }
         }
