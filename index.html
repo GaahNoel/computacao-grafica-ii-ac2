@@ -186,7 +186,7 @@
                     var barrelChildren = barrel.getChildren();
                     var barrelBody = barrelChildren[2];
 
-                    if(hero.intersectsMesh(barrelBody, true)) {
+                    if(hero.intersectsMesh(barrelBody, true) && barrel._isEnabled) {
                         const barrelPosX = barrel.position.x;
                         const barrelPosZ = barrel.position.z;
 
@@ -209,8 +209,7 @@
                                 volume: 0.1
                             });
                         });
-                       
-                        
+                                
                         barrel.setEnabled(false);
                         barrel.isVisible = false;
                     }
@@ -586,7 +585,9 @@
                     if (inputMap["f"] || inputMap["F"]) {
                         victory.stop();
                         advancedTextureM.dispose();
+
                         sambaAnim.stop();
+                        
                         hero.position.x=0;
                         hero.position.z=0;
 
