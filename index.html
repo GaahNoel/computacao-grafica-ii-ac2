@@ -121,7 +121,7 @@
 
         var camera = new BABYLON.ArcRotateCamera("Camera", - Math.PI / 2, Math.PI / 4, -1, new BABYLON.Vector3(0,0,0), scene);
         camera.setPosition(new BABYLON.Vector3(0, 0, -10));
-        camera.lowerRadiusLimit = 10;
+        camera.lowerRadiusLimit = 20;
         camera.upperRadiusLimit = 14;
         camera.attachControl(canvas, true);
 
@@ -148,7 +148,9 @@
         // });
 
         itemsStack = await createCollectable(scene);
-        //console.log(itemsStack);
+        scene.animationGroups.forEach(animation => {
+            animation.stop();
+        })
 
         const loader = document.querySelector('.loader-container');
         loader.style.opacity = '0';
@@ -330,8 +332,8 @@
 
              if(camera.beta <= 0.1){
                  camera.beta = 0.1;
-             }else if(camera.beta > (Math.PI/2)*0.75){
-                 camera.beta = (Math.PI/2)*0.75;
+             }else if(camera.beta > (Math.PI/2)*0.9){
+                 camera.beta = (Math.PI/2)*0.9;
             }
 
         })
@@ -397,12 +399,12 @@
            "flightHelmet.glb" : "Mascara de Gás",
            "skull.babylon": "Crânio de Caveira",
            "Rabbit.babylon": "Coelho",
-           "toast_acrobatics.glb": "Torradeira acrobática",
+           "aerobatic_plane.glb": "Aviãozinho",
            "seagulf.glb": "Pássaro de Headset",
            "vintageFan_animated.gltf": "Ventilador",
            "candle.babylon": "Vela",
            "dragon.babylon": "Estátua de Dragão",
-           "Buggy.gltf": "Carrinho de brinquedo",
+           "Buggy.gltf": "Carro de Lego",
        }
         return names[id];
     }
@@ -668,7 +670,7 @@
             { "link":"https://models.babylonjs.com/Georgia-Tech-Dragon/", "name":"dragon.babylon", "scale": "7" },
             { "link":"https://models.babylonjs.com/", "name":"shark.glb", "scale": "0.5" },
             { "link":"https://models.babylonjs.com/vintageDeskFan/","name":"vintageFan_animated.gltf", "scale": "0.03" },
-            { "link":"https://models.babylonjs.com/", "name": "toast_acrobatics.glb", "scale": "7" },
+            { "link":"https://models.babylonjs.com/", "name": "aerobatic_plane.glb", "scale": "7" },
             { "link": "https://models.babylonjs.com/", "name": "seagulf.glb", "scale": "0.0015" },
             { "link": "https://playground.babylonjs.com/scenes/", "name": "candle.babylon", "scale": "0.5" },
             { "link": "https://models.babylonjs.com/", "name": "flightHelmet.glb", "scale": "0.045" },
@@ -718,11 +720,6 @@
             if(collectable.name == "skull.babylon") {
                 item.position.y = -9.75;
                 hitBox.position.y = -9.75;
-            }
-
-            if(collectable.name == "toast_acrobatics.glb") {
-                hitBox.position.y += 1;
-                hitBox.position.x -= 1;
             }
             
             if(collectable.name == "seagulf.glb") {
@@ -838,7 +835,7 @@
                 hitbox.position.y = -9.75;
             }
 
-            if(principal.id == "toast_acrobatics.glb") {
+            if(principal.id == "aerobatic_plane.glb") {
                 hitbox.position.y += 1;
                 hitbox.position.x -= 1;
             }
