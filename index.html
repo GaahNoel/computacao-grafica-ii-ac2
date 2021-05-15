@@ -148,7 +148,6 @@
         // });
 
         itemsStack = await createCollectable(scene);
-        //console.log(itemsStack);
 
         const loader = document.querySelector('.loader-container');
         loader.style.opacity = '0';
@@ -190,6 +189,8 @@
                         const barrelPosX = barrel.position.x;
                         const barrelPosZ = barrel.position.z;
 
+                        createParticle(barrel);
+
                         BABYLON.ParticleHelper.CreateAsync("explosion", scene).then((set) => {
                         set.systems.forEach(s => {
                                 s.emitter.x = barrelPosX;
@@ -218,7 +219,6 @@
     
             itemsStack.forEach(item =>{
                 if(hero && item){
-                    // console.log(item.id + " - " + itemsStack[itemsStack.length-1].id);
                     
                     if(hero.intersectsMesh(item, true) && itemsStack[itemsStack.length-1].id === item.id) {
                         const meshes = scene.getMeshesByID(item.id);
@@ -292,7 +292,6 @@
                                 advancedTextureM.addControl(footPanel);
 
                                 var addHeader = function (text, panel, alinhamento) {
-                                    //console.log(text + "  " + panel + "  " + alinhamento)
                                     var header = new BABYLON.GUI.TextBlock();
                                     header.text = text;
                                     header.height = "30px";
@@ -314,9 +313,6 @@
                             }
                             score++;
                             buildUI();
-
-                            //console.log("Fim de jogo");
-
                         }
 
                         if(advancedTexture)
@@ -373,9 +369,6 @@
                 copyMesh['principal'].name = 'principal';
                 copyMesh['principal'].setEnabled(false);
             }
-
-            console.log(mesh.position);
-           
 
             const material = new BABYLON.StandardMaterial("next-item",scene);
             material.diffuseColor = new BABYLON.Color3(1,0,0);
@@ -464,17 +457,26 @@
     }
 
     const createParticle = function(meshes){
-
-         console.log(meshes);
-         var item = meshes[0];
-         console.log(item);
-
+         var item;
          // Create a particle system
          var particleSystem = new BABYLON.ParticleSystem("particles", 5000, scene);
-         // Where the particles come from
-         particleSystem.particleTexture = new BABYLON.Texture("./assets/textures/star.png", scene);
 
-         particleSystem.emitter = new BABYLON.Vector3(item.position.x, -10, item.position.z); // the starting object, the emitter
+         if(meshes.name && meshes.name.includes("barrel")){
+             // Set the gravity of all particles
+             item=meshes;
+             particleSystem.gravity = new BABYLON.Vector3(0, -18, 0);
+             particleSystem.targetStopDuration = 0.02;
+         }
+         else{
+            item = meshes[0];
+            particleSystem.gravity = new BABYLON.Vector3(0, -50, 0);
+            particleSystem.targetStopDuration = 0.02;
+         }
+            
+         // Where the particles come from
+         particleSystem.particleTexture = new BABYLON.Texture("./assets/textures/rings.png", scene);
+
+         particleSystem.emitter = new BABYLON.Vector3(item.position.x, -9.7, item.position.z); // the starting object, the emitter
          particleSystem.minEmitBox = new BABYLON.Vector3(-0.375, 0, -2); // Starting all from
          particleSystem.maxEmitBox = new BABYLON.Vector3(0.375, 0, 2); // To...
 
@@ -492,13 +494,10 @@
         particleSystem.maxLifeTime = 0.5;
 
         // Emission rate
-        particleSystem.emitRate = 600;
+        particleSystem.emitRate = 1200;
 
         // Blend mode : BLENDMODE_ONEONE, or BLENDMODE_STANDARD
-        particleSystem.blendMode = BABYLON.ParticleSystem.BLENDMODE_STANDARD;
-
-        // Set the gravity of all particles
-        particleSystem.gravity = new BABYLON.Vector3(0, -4, 0);
+        particleSystem.blendMode = BABYLON.ParticleSystem.BLENDMODE_STANDARD;    
 
         // Direction of each particle after it has been emitted
         particleSystem.direction1 = new BABYLON.Vector3(-2, 8, 2);
@@ -512,8 +511,6 @@
         particleSystem.minEmitPower = 1;
         particleSystem.maxEmitPower = 1;
         particleSystem.updateSpeed = 0.01;
-        particleSystem.targetStopDuration = 0.02;
-
 
         // Start the particle system
         particleSystem.start();
@@ -593,7 +590,6 @@
 
                         score = 0;
                         resetScene(scene);
-                        //console.log(score);
                     }
                 }
 
@@ -734,8 +730,6 @@
         });
         const itemsStack = await Promise.all(collectablesMap);
         const shuffledItemsStack = shuffle(itemsStack);
-        //console.log(shuffledItemsStack);
-
         return shuffledItemsStack;
    
     }
@@ -800,11 +794,9 @@
         itemsStack = [];
         posItems = shuffle(posItems);
         lastIndex = posItems.length - 1;
-        console.log(newRunItems);
 
         newRunItems.forEach(mesh => {
             const pos = posItems[lastIndex];
-            console.log(lastIndex);
             lastIndex--;
 
             const hitbox = mesh['hitbox'];
@@ -893,10 +885,9 @@
     initFunction = async function() {               
         var asyncEngineCreation = async function() {
             try {
-            return createDefaultEngine();
+                return createDefaultEngine();
             } catch(e) {
-            //console.log("the available createEngine function failed. Creating the default engine instead");
-            return createDefaultEngine();
+                return createDefaultEngine();
             }
         }
 
